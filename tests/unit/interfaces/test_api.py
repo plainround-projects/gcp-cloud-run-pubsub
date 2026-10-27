@@ -56,3 +56,12 @@ def test_health_says_whether_the_secret_is_set_and_never_its_value(publisher, pa
 def test_an_oversized_body_is_refused(publisher):
     response = client_for(publisher).post("/upload", data=b"x" * 70_000, content_type="application/json")
     assert response.status_code == 413
+
+
+def test_a_successful_upload_logs_at_info_without_breaking_the_response(publisher, caplog):
+    # Regression: logging extra={"name": ...} collides with LogRecord.name and raised KeyError only when INFO was enabled.
+    with caplog.at_level(logging.INFO, logger="uploads.api"):
+        response = client_for(publisher).post("/upload", json={"name": "report-1"})
+    assert response.status_code == 202
+    assert caplog.records[0].upload_name == "report-1"
+    assert caplog.records[0].message_id == "1"

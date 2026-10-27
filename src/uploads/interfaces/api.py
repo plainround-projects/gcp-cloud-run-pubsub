@@ -32,7 +32,7 @@ def create_app(request_upload: RequestUpload, db_password_set: bool) -> Flask:
         except PublishFailed as error:
             logger.error("publish failed", extra={"error": str(error)})
             return jsonify(error="could not publish the message"), 503
-        logger.info("upload requested", extra={"name": body["name"], "message_id": receipt.message_id})
+        logger.info("upload requested", extra={"upload_name": body["name"], "message_id": receipt.message_id})
         return jsonify(published=receipt.message_id), 202
 
     @app.get("/health")

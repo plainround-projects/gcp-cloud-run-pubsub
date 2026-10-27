@@ -49,3 +49,10 @@ def test_a_delivery_that_can_never_succeed_gets_a_4xx_so_it_is_dead_lettered_not
 
 def test_health_is_ok():
     assert client_for(InMemoryStore()).get("/health").status_code == 200
+
+
+def test_a_processed_delivery_logs_at_info_without_breaking_the_response(caplog):
+    with caplog.at_level(logging.INFO, logger="uploads.worker"):
+        response = client_for(InMemoryStore()).post("/", json=push())
+    assert response.status_code == 204
+    assert (caplog.records[0].message_id, caplog.records[0].outcome) == ("9", "created")
