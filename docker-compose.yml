@@ -1,0 +1,59 @@
+# Local stack: the Pub/Sub emulator and a fake Cloud Storage server always; the API and the worker with --profile apps.
+name: gcp-cloud-run-pubsub
+
+services:
+  pubsub:
+    image: gcr.io/google.com/cloudsdktool/google-cloud-cli:590.0.1-emulators
+    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085 --project=local-project
+    ports:
+      - "8085:8085"
+    # Lets the emulator push to a worker running on the host (the end-to-end tests do that).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8085/ >/dev/null"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  gcs:
+    image: fsouza/fake-gcs-server:1.52.2
+    command: ["-scheme", "http", "-port", "4443", "-backend", "memory", "-public-host", "localhost:4443"]
+    ports:
+      - "4443:4443"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:4443/storage/v1/b"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  api:
+    profiles: ["apps"]
+    build:
+      context: .
+      target: api
+    environment:
+      PROJECT_ID: local-project
+      TOPIC_ID: uploads
+      DB_PASSWORD: ${DB_PASSWORD:-} # make up generates a throwaway; empty makes /health report false
+      PUBSUB_EMULATOR_HOST: pubsub:8085
+    ports:
+      - "8080:8080"
+    depends_on:
+      pubsub:
+        condition: service_healthy
+
+  worker:
+    profiles: ["apps"]
+    build:
+      context: .
+      target: worker
+    environment:
+      PROJECT_ID: local-project
+      BUCKET: local-results
+      STORAGE_EMULATOR_HOST: http://gcs:4443
+    ports:
+      - "8081:8080"
+    depends_on:
+      gcs:
+        condition: service_healthy
