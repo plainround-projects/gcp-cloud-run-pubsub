@@ -36,6 +36,7 @@ where = ["src"]
 line-length = 120
 target-version = "py312"
 src = ["src", "tests"]
+extend-exclude = ["tech"]  # the learning notes quote code fragments; ruff would re-indent them
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "N", "C4", "RUF", "PT", "S", "D100", "D101", "D103", "D104"]
