@@ -6,11 +6,12 @@ Run through `make up`. The API and worker containers reach the emulators by serv
 from __future__ import annotations
 
 import os
+import time
 
 os.environ.setdefault("PUBSUB_EMULATOR_HOST", "localhost:8085")
 os.environ.setdefault("STORAGE_EMULATOR_HOST", "http://localhost:4443")
 
-from google.api_core.exceptions import AlreadyExists
+from google.api_core.exceptions import AlreadyExists, DeadlineExceeded, ServiceUnavailable
 from google.auth.credentials import AnonymousCredentials
 from google.cloud import pubsub_v1, storage
 
@@ -48,12 +49,20 @@ def main() -> None:
 
 
 def _ignore_exists(action) -> None:  # type: ignore[no-untyped-def]
-    try:
-        action()
-    except AlreadyExists:
-        pass
-    except Exception as error:  # fake-gcs-server answers 409 with its own exception type
-        if "409" not in str(error) and "already" not in str(error).lower():
+    """Run `action`; an existing resource is fine, and a cold emulator gets a few more tries."""
+    for attempt in range(1, 6):
+        try:
+            action()
+            return
+        except AlreadyExists:
+            return
+        except (DeadlineExceeded, ServiceUnavailable):
+            if attempt == 5:
+                raise
+            time.sleep(5 * attempt)
+        except Exception as error:  # fake-gcs-server answers 409 with its own exception type
+            if "409" in str(error) or "already" in str(error).lower():
+                return
             raise
 
 
