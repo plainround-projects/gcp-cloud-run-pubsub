@@ -1,0 +1,7 @@
+# Copy to backend.tf for remote state. The bucket is created by hand, with versioning, before `terraform init`.
+terraform {
+  backend "gcs" {
+    bucket = "EXAMPLE-terraform-state"
+    prefix = "gcp-cloud-run-pubsub/sandbox"
+  }
+}

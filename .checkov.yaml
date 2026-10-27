@@ -1,0 +1,14 @@
+# make security
+directory:
+  - .
+framework:
+  - terraform
+  - dockerfile
+  - github_actions
+  - secrets
+skip-path:
+  - .venv
+  - node_modules
+  - infra/environments/sandbox/.terraform
+quiet: true
+compact: true

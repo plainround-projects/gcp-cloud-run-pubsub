@@ -1,0 +1,15 @@
+# Copy to sandbox.tfvars and edit. The values below are placeholders; `make plan` uses this file as it is.
+project_id      = "example-sandbox-0000"
+project_number  = "000000000000"
+region          = "europe-west1"
+billing_account = "AAAAAA-BBBBBB-CCCCCC" # gcloud billing accounts list; leave "" to skip the budget
+budget_amount   = 10
+
+# true only when the project sits under an organization; otherwise follow the rule by hand (README, step 1).
+enforce_no_service_account_keys = false
+
+# After scripts/build-images.sh, deploy.sh passes your images; these are the placeholders for the first apply.
+# api_image    = "europe-west1-docker.pkg.dev/PROJECT/uploads/api:TAG"
+# worker_image = "europe-west1-docker.pkg.dev/PROJECT/uploads/worker:TAG"
+
+# db_password is not set here. Export TF_VAR_db_password (scripts/deploy.sh generates a throwaway one).
