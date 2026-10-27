@@ -11,10 +11,12 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8085/ >/dev/null"]
-      interval: 3s
-      timeout: 3s
-      retries: 30
+      # A TCP connect, not an HTTP request: the emulator's HTTP/1 handler is only there for this kind of probe and can stall.
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 8085), 3).close()"]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+      start_period: 120s # the JVM can take minutes to start on a busy machine
 
   gcs:
     image: fsouza/fake-gcs-server:1.52.2

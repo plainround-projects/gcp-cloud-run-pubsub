@@ -83,7 +83,7 @@ audit: $(STAMP) ## check the locked dependencies for known vulnerabilities
 check: lint test validate ## everything that needs no emulator and no cloud
 
 emulators: ## start the Pub/Sub emulator and a fake Cloud Storage server
-	$(COMPOSE) up -d --wait pubsub gcs
+	$(COMPOSE) up -d --wait --wait-timeout 900 pubsub gcs
 
 test-integration: $(STAMP) emulators ## adapters against the emulators
 	$(PY) -m pytest tests/integration -m integration
@@ -92,7 +92,7 @@ test-e2e: $(STAMP) emulators ## the lesson's scenario: API -> topic -> push -> w
 	$(PY) -m pytest tests/e2e -m e2e
 
 up: ## build and start the emulators, the API and the worker as containers
-	DB_PASSWORD=$$(openssl rand -hex 12) $(COMPOSE) --profile apps up -d --build --wait
+	DB_PASSWORD=$$(openssl rand -hex 12) $(COMPOSE) --profile apps up -d --build --wait --wait-timeout 900
 	$(PY) scripts/init_emulator.py
 
 run: $(STAMP) up ## upload twice through the local stack and list the result files
