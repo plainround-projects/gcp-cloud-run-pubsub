@@ -116,6 +116,150 @@ check: lint test validate ## everything that needs no emulator and no cloud
 
 `check` has no recipe; it only has prerequisites, so it runs `lint`, `test` and `validate` in that order. You can also name several targets on one command line: `make test-python test-e2e`.
 
+## Every target of this Makefile, one by one
+
+The whole file, then each target in turn. A target line has the form `name: prerequisites ## description`; everything after `##` is a comment that `help` prints. A recipe line starts with a Tab; a leading `@` hides the command and shows only its output.
+
+`Makefile`
+
+```make
+# make help lists every target. Nothing here needs a Google Cloud account except the deploy-* and prove-* targets.
+PYTHON ?= $(shell command -v python3.13 || command -v python3.12 || command -v python3)
+VENV := .venv
+PY := $(VENV)/bin/python
+STAMP := $(VENV)/.installed
+ENV_DIR := infra/environments/sandbox
+TF ?= terraform
+COMPOSE := docker compose
+
+-include .env
+export
+
+.PHONY: help install lint lint-python lint-terraform format test test-python test-terraform test-integration test-e2e \
+        validate validate-terraform plan security audit check up run emulators down docker-build clean \
+        deploy build-images prove teardown
+
+help: ## list the targets
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/:.*## /\t/' | sort
+
+$(STAMP): requirements-dev.lock pyproject.toml
+	$(PYTHON) -m venv $(VENV)
+	$(VENV)/bin/pip install -q --require-hashes -r requirements-dev.lock
+	$(VENV)/bin/pip install -q --no-deps -e .
+	touch $@
+
+install: $(STAMP) ## create .venv from the lock file
+
+lint: lint-python lint-terraform ## Python (ruff, mypy, import rules), shell, Terraform format and tflint
+
+lint-python: $(STAMP)
+	$(VENV)/bin/ruff check .
+	$(VENV)/bin/ruff format --check .
+	$(VENV)/bin/mypy
+	$(VENV)/bin/lint-imports
+	shellcheck scripts/*.sh
+
+lint-terraform:
+	$(TF) fmt -check -recursive -diff infra
+	cd infra && tflint --init >/dev/null && tflint --recursive --config "$$PWD/.tflint.hcl"
+
+format: $(STAMP) ## apply ruff and terraform fmt
+	$(VENV)/bin/ruff check --fix .
+	$(VENV)/bin/ruff format .
+	$(TF) fmt -recursive infra
+
+# Unit tests need no emulator and no cloud. The domain and application layers must stay at 95% or more.
+test: test-python test-terraform ## unit tests with coverage, then the Terraform policy tests (no cloud, no emulators)
+
+test-python: $(STAMP)
+	$(PY) -m pytest tests/unit --cov=uploads --cov-report=term
+	$(PY) -m coverage report --include='src/uploads/domain/*,src/uploads/application/*' --fail-under=95
+
+# `terraform test` with a mock provider: plans each module and the environment, no credentials needed.
+test-terraform:
+	@for dir in infra/modules/* $(ENV_DIR); do \
+	  if [ -d $$dir/tests ]; then \
+	    echo "== $$dir"; \
+	    (cd $$dir && $(TF) init -backend=false -input=false >/dev/null && $(TF) test) || exit 1; \
+	  fi; \
+	done
+
+validate: validate-terraform security ## terraform init -backend=false, validate, an offline plan, and checkov
+
+validate-terraform:
+	@for dir in infra/modules/* $(ENV_DIR); do \
+	  echo "== $$dir"; \
+	  (cd $$dir && $(TF) init -backend=false -input=false >/dev/null && $(TF) validate) || exit 1; \
+	done
+	$(MAKE) --no-print-directory plan
+
+# The plan needs no credentials: nothing in the configuration reads from Google Cloud, so a placeholder token is enough.
+# db_password is an ephemeral variable with no default; the placeholder is never written anywhere.
+plan:
+	cd $(ENV_DIR) && TF_VAR_db_password=offline-placeholder GOOGLE_OAUTH_ACCESS_TOKEN=offline-placeholder $(TF) plan -input=false -lock=false \
+	  -var-file=sandbox.tfvars.example
+
+security: ## checkov over the Terraform and the Dockerfile
+	checkov --config-file .checkov.yaml
+
+audit: $(STAMP) ## check the locked dependencies for known vulnerabilities
+	$(VENV)/bin/pip-audit --no-deps --disable-pip -r requirements-dev.lock
+
+check: lint test validate ## everything that needs no emulator and no cloud
+
+emulators: ## start the Pub/Sub emulator and a fake Cloud Storage server
+	$(COMPOSE) up -d --wait --wait-timeout 900 pubsub gcs
+
+test-integration: $(STAMP) emulators ## adapters against the emulators
+	$(PY) -m pytest tests/integration -m integration
+
+test-e2e: $(STAMP) emulators ## the lesson's scenario: API -> topic -> push -> worker -> bucket, and the failing variant
+	$(PY) -m pytest tests/e2e -m e2e
+
+up: ## build and start the emulators, the API and the worker as containers
+	DB_PASSWORD=$$(openssl rand -hex 12) $(COMPOSE) --profile apps up -d --build --wait --wait-timeout 900
+	$(PY) scripts/init_emulator.py
+
+run: $(STAMP) up ## upload twice through the local stack and list the result files
+	scripts/local-demo.sh
+
+down: ## stop everything and delete the emulators' data
+	$(COMPOSE) --profile apps down -v
+
+docker-build: ## build both service images
+	docker build --target api -t uploads-api:dev .
+	docker build --target worker -t uploads-worker:dev .
+
+build-images: ## build for linux/amd64 and push both images to Artifact Registry (needs the project)
+	scripts/build-images.sh
+
+deploy: ## terraform apply in two passes: placeholder images, then yours (needs the project)
+	scripts/deploy.sh
+
+prove: ## the runbook checks for Done when steps 1-4 (needs the project)
+	scripts/prove.sh
+
+teardown: ## delete the project (needs the project)
+	scripts/teardown.sh
+
+clean: down
+	rm -rf $(VENV) .pytest_cache .mypy_cache .ruff_cache .coverage .import_linter_cache
+	find infra -name .terraform -type d -prune -exec rm -rf {} +
+```
+
+- `PYTHON ?=` picks the newest Python 3.13, 3.12 or 3. `VENV`, `PY`, `STAMP` are names used below; `ENV_DIR` is the Terraform environment; `TF ?= terraform`; `COMPOSE := docker compose` is the command for Docker Compose.
+- `-include .env` loads your private settings if the file exists, and `export` passes them to the commands (see `env-files.md`). `.PHONY` lists the targets that are commands, not files.
+- `help`, `$(STAMP)` and `install`: the help list, the environment creation (a virtual environment, `pip install --require-hashes -r requirements-dev.lock`, `pip install --no-deps -e .`, then `touch $@`) and the target that only depends on it.
+- `lint` depends on `lint-python` and `lint-terraform`. `lint-python` runs `ruff check .`, `ruff format --check .`, `mypy`, `lint-imports`, `shellcheck scripts/*.sh`. `lint-terraform` runs `terraform fmt -check -recursive -diff infra` and then, in one shell line, `cd infra && tflint --init >/dev/null && tflint --recursive --config "$$PWD/.tflint.hcl"` (`$$` hands one `$` to the shell). `format` is the fixing version.
+- `test` depends on `test-python` and `test-terraform`. `test-python` runs `pytest tests/unit --cov=uploads --cov-report=term`, then `coverage report ... --fail-under=95` for the domain and application layers. `test-terraform` and `validate-terraform` are shell loops over the modules and the environment (`$$dir`, `|| exit 1`), running `terraform test` or `terraform validate` after `terraform init -backend=false -input=false`; `validate-terraform` ends by calling `$(MAKE) --no-print-directory plan`.
+- `plan`: `TF_VAR_db_password=offline-placeholder` fills the ephemeral variable and `GOOGLE_OAUTH_ACCESS_TOKEN=offline-placeholder` satisfies the provider, so the plan needs no cloud; neither is written anywhere. `-input=false` never asks, `-lock=false` skips state locking, `-var-file=sandbox.tfvars.example` gives the example values.
+- `security` runs checkov. `audit` runs `pip-audit --no-deps --disable-pip -r requirements-dev.lock`. `check` depends on `lint`, `test`, `validate`.
+- `emulators`: `docker compose up -d --wait --wait-timeout 900 pubsub gcs` starts the two emulator containers in the background (`-d`), waits until their health checks pass (`--wait`) for up to 900 seconds, and starts only those two services.
+- `test-integration` and `test-e2e` depend on the stamp and on `emulators`, then run the tests marked `integration` or `e2e` (`-m`).
+- `up`: `DB_PASSWORD=$$(openssl rand -hex 12) $(COMPOSE) --profile apps up -d --build --wait --wait-timeout 900` sets a random one-off password for this command only, starts the whole stack including the services in the `apps` profile, building images (`--build`); then `scripts/init_emulator.py` creates the topics and the bucket. `run` depends on `up` and runs `scripts/local-demo.sh`. `down` runs `docker compose --profile apps down -v` (stop everything and delete the volumes).
+- `docker-build` builds both images with `docker build --target api -t uploads-api:dev .` and the same for the worker. `build-images`, `deploy`, `prove`, `teardown` run their scripts (they need the project).
+- `clean` depends on `down`, then removes the environment and caches and the downloaded Terraform plug-ins with `find ... -prune -exec rm -rf {} +`.
+
 ## 6. Try it yourself
 
 ```bash
