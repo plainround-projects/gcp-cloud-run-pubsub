@@ -83,9 +83,11 @@ class Stack:
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
+        self.push_subscription = self.subscriber.subscription_path(PROJECT, f"{self.topic_id}-push")
+        self.topics = [self.topic, dead_topic]
         self.subscriber.create_subscription(
             request={
-                "name": self.subscriber.subscription_path(PROJECT, f"{self.topic_id}-push"),
+                "name": self.push_subscription,
                 "topic": self.topic,
                 "push_config": {"push_endpoint": f"http://host.docker.internal:{self.server.port}/"},
                 "dead_letter_policy": {"dead_letter_topic": dead_topic, "max_delivery_attempts": 5},
@@ -103,8 +105,16 @@ class Stack:
         return bool(self.bucket.blob(f"results/{name}.txt").exists())
 
     def close(self) -> None:
-        self.publisher.close()
+        """Stop the worker and delete what the test created: a push subscription to a stopped worker would be retried
+        for ever and slow the emulator down for every test after it."""
         self.server.shutdown()
+        self.publisher.close()
+        for subscription in (self.push_subscription, self.dead_pull):
+            self.subscriber.delete_subscription(request={"subscription": subscription})
+        deleter = pubsub_v1.PublisherClient()
+        for topic in self.topics:
+            deleter.delete_topic(request={"topic": topic})
+        self.bucket.delete(force=True)
 
 
 @pytest.fixture
