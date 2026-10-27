@@ -59,7 +59,7 @@ def test_an_oversized_body_is_refused(publisher):
 
 
 def test_a_successful_upload_logs_at_info_without_breaking_the_response(publisher, caplog):
-    # Regression: logging extra={"name": ...} collides with LogRecord.name and raised KeyError only when INFO was enabled.
+    # Regression: extra={"name": ...} collides with LogRecord.name and raised KeyError only when INFO was enabled.
     with caplog.at_level(logging.INFO, logger="uploads.api"):
         response = client_for(publisher).post("/upload", json={"name": "report-1"})
     assert response.status_code == 202

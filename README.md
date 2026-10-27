@@ -50,7 +50,7 @@ make down           # stop everything, delete the emulators' data
 
 ```bash
 make lint           # ruff, ruff format, mypy --strict, import-linter, shellcheck, terraform fmt -check, tflint
-make test           # 101 unit tests with coverage (domain + application >= 95%) and the Terraform tests with a mock provider
+make test           # 103 unit tests with coverage (domain + application >= 95%) and the Terraform tests with a mock provider
 make validate       # terraform init -backend=false + validate on every module and the environment, an offline plan, checkov
 make test-integration   # the Pub/Sub and Cloud Storage adapters against the emulators
 make test-e2e           # API -> emulator topic -> push -> worker -> bucket, then the failing variant with retry, dead letter, replay
