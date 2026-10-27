@@ -188,7 +188,7 @@ Dependency rule: `interfaces` -> `infrastructure` -> `application` -> `domain`, 
 
 ## Verification record
 
-Last verified on 2026-10-27 on macOS with Python 3.13, Terraform 1.17.0, tflint 0.65.0 (ruleset google 0.41.0), checkov 3.3.30. The commands and their results are in the build report; each repository command above was run from a fresh clone.
+Last verified on 2026-10-27 on macOS with Python 3.13, Terraform 1.17.0, tflint 0.65.0 (ruleset google 0.41.0), checkov 3.3.30, Docker 24. From a fresh clone: `make install`, `make check` (103 unit tests, lint, types, import rules, shellcheck, Terraform format, tflint, 8 module and environment validations, the offline plan of 32 resources, the Terraform tests, checkov), `make test-integration` (4 tests) and `make test-e2e` (2 tests) all passed. In the working tree: `make up` and `make run` (the containers, the emulator pushing to the worker in the compose network, two result files) and `make audit` (no known vulnerabilities) passed. Not verified: anything against Google Cloud itself (IAM, OIDC tokens, Cloud Run, the log text of a denial).
 
 ## License
 
