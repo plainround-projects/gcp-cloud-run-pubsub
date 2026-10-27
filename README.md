@@ -16,6 +16,7 @@ An upload API and a Pub/Sub push worker on Cloud Run, each running as its own le
 - `infra/`: Terraform (`google` provider `~> 8.8`) with seven modules and one environment, `sandbox`: the project baseline (APIs, budget, key policy), three service accounts, the secret, the bucket, the Artifact Registry repository, both Cloud Run services and the Pub/Sub pipeline with its dead-letter topic.
 - `scripts/`: the lesson's runbook as the exact `gcloud` and `terraform` commands, plus `prove.sh`, which checks every Done when line against the real project.
 - `docker-compose.yml`: the Pub/Sub emulator and a fake Cloud Storage server, so the whole flow, including retries and the dead-letter topic, runs on this machine.
+- `tech/`: 36 notes, one per technology (Python, Terraform, Bash, Make, each Google Cloud service and every tool), written for a reader who has never met them. Start with [tech/README.md](tech/README.md).
 
 Nothing here has been deployed: no Google Cloud project exists yet. Everything that does not need one is verified (see "Verification record"); the lines that do need one are marked "needs the project".
 
@@ -173,6 +174,7 @@ Review checklist from the lesson, mapped: budget and key refusal (1), own accoun
 │   └── environments/sandbox/       the composition: main.tf, variables.tf, outputs.tf, sandbox.tfvars.example, tests/
 ├── scripts/                        the runbook: create-project, deploy, build-images, prove, break-permission, read-denial,
 │                                   restore-and-replay, teardown; local-demo and init_emulator for the local stack
+├── tech/                           36 technology notes and an index (README.md)
 └── docs/adr/                       decision records
 ```
 

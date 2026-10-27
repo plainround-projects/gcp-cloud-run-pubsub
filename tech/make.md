@@ -13,7 +13,7 @@ The rule for every repository here is that a reader needs only a few commands: `
 | Path | What it does with Make |
 | --- | --- |
 | `Makefile` | All targets: install, lint, format, test, validate, security, audit, emulators, up, run, down, deploy and the runbook shortcuts. |
-| `.github/workflows/ci.yml` | Calls `make lint-python`, `make test-terraform`, `make test-integration` and so on. |
+| `.github/workflows/ci.yml` | Calls `make lint-python`, `make test-terraform` and the other targets. |
 
 ## 4. How it works underneath
 
@@ -114,14 +114,14 @@ validate-terraform:
 check: lint test validate ## everything that needs no emulator and no cloud
 ```
 
-`check` has no recipe; it only has prerequisites, so it runs `lint`, `test` and `validate` in that order. You can also name several targets on one command line: `make test-integration test-e2e`.
+`check` has no recipe; it only has prerequisites, so it runs `lint`, `test` and `validate` in that order. You can also name several targets on one command line: `make test-python test-e2e`.
 
 ## 6. Try it yourself
 
 ```bash
 make help
 ```
-Expected: one line per documented target (`audit`, `build-images`, `check`, ... `validate`), each followed by its description.
+Expected: one line per documented target (`audit`, `check`, ... `validate`), each followed by its description.
 
 ```bash
 make -n lint-python
@@ -134,7 +134,7 @@ Expected (`-n` prints the commands without running them):
 .venv/bin/lint-imports
 shellcheck scripts/*.sh
 ```
-(If `.venv/.installed` is missing you will first see the install commands.)
+(If `.venv/.installed` is missing, or older than `pyproject.toml` or the lock file, you will first see the install commands.)
 
 ```bash
 make -n check | head -5

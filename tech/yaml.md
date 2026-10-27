@@ -18,7 +18,7 @@ Two tools take their instructions in YAML: Docker Compose (the local stack) and 
 
 ## 4. How it works underneath
 
-A program reads the text and builds data in memory: a mapping becomes a dictionary, a sequence becomes a list. The indentation is the structure, so one wrong space changes the meaning. Two traps: YAML parsers guess types (in older YAML rules `no`, `yes` and `on` become booleans and `8085:8085` can become a number), and a value that contains `: ` or begins with `*` or `{` needs quotes.
+A program reads the text and builds data in memory: a mapping becomes a dictionary, a sequence becomes a list. The indentation is the structure, so one wrong space changes the meaning. Two traps: YAML parsers guess types (in YAML 1.1, which PyYAML and some other tools follow, bare `no`, `yes` and `on` become booleans and `22:22` becomes a number), and a value that contains `: ` or begins with `*` or `{` needs quotes.
 
 Inline forms exist too: `[a, b]` is a list and `{x: 1}` a mapping on one line. A `|` after a key starts a block of literal lines (used for multi-line shell commands).
 
@@ -43,7 +43,7 @@ services:
 
 - `services:` is a mapping. Its keys (`pubsub`, `gcs`, ...) are names the user chooses.
 - `image:` is a scalar. `command:` here is one string; in `gcs` it is a list: `["-scheme", "http", ...]`, each item one program argument.
-- `ports:` is a sequence of strings: `- "8085:8085"`. The quotes matter: unquoted `8085:8085` could be read as a number in base 60 by old YAML rules.
+- `ports:` is a sequence of strings: `- "8085:8085"`. The Compose documentation asks you to quote port mappings: under YAML 1.1 rules an unquoted pair such as `22:22` is read as a number in base 60 (1342), so the safe habit is to always quote.
 - `healthcheck:` is a nested mapping (indent two more spaces). Its `test:` is a list whose first item (`CMD`) tells Docker how to run the rest.
 
 The workflow's skeleton:
@@ -88,7 +88,7 @@ Expected: `workflow parses`.
 
 - **Tabs for indentation.** Not allowed.
 - **Inconsistent indentation** moving a key to the wrong parent.
-- **Unquoted special values** (`yes`, `no`, `1.10`, `8085:8085`, version numbers). Quote them.
+- **Unquoted special values** (`yes`, `no`, `1.10`, `22:22`, version numbers). Quote them.
 - **Forgetting the space after the colon** (`key:value` is a plain string).
 - **Confusing a string with a list** (`command: a b` vs `command: [a, b]`). Check what the tool expects.
 
@@ -96,7 +96,7 @@ Expected: `workflow parses`.
 
 1. What shows nesting in YAML? *Indentation with spaces.*
 2. How do you write a list item? *A line starting with `- `.*
-3. Why quote `"8085:8085"`? *To make sure it is read as text.*
+3. Why quote port mappings such as `"8085:8085"`? *Unquoted values like `22:22` can be read as numbers; quotes keep them text.*
 4. What is the difference between `command: a b` and `command: [a, b]`? *A single string versus a list of two arguments.*
 5. How do you comment a line? *Start it with `#`.*
 

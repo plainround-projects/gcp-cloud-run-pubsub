@@ -6,7 +6,7 @@
 
 ## 2. Why this repository uses it
 
-The repository must be reproducible and safe: the same versions everywhere (laptop, CI, Docker image), and a download that was tampered with must be refused. Hash pinning gives both; `pip-audit` runs on every push.
+The repository must be reproducible and safe: the same versions everywhere (laptop, CI and anywhere else it runs), and a download that was tampered with must be refused. Hash pinning gives both; `pip-audit` runs on every push.
 
 ## 3. Where it appears
 

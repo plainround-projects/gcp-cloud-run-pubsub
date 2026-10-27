@@ -76,7 +76,7 @@ git status --short; echo "files: $(git status --short | wc -l)"
 Expected: `files: 0` (a clean tree; nothing untracked).
 
 ```bash
-git check-ignore -v .venv .env sandbox.tfvars 2>/dev/null; git check-ignore -v infra/environments/*/.terraform.lock.hcl || echo "lock file is tracked"
+git check-ignore -v .venv .env example.tfvars 2>/dev/null; git check-ignore -v infra/environments/*/.terraform.lock.hcl || echo "lock file is tracked"
 ```
 Expected: lines showing which `.gitignore` rule matches each ignored path; the environment's lock file is *not* ignored.
 

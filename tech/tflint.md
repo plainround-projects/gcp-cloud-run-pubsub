@@ -70,7 +70,7 @@ cd infra && tflint --init && tflint --recursive --config "$PWD/.tflint.hcl"; ech
 ```
 Expected: `Installing "google" plugin...` the first time (needs network), then no findings and `exit=0`.
 
-Make a finding: add `variable "unused" {}` to `infra/modules/service-account/variables.tf`, rerun, and read the warning `variable "unused" is declared but not used`; remove the line.
+Make a finding: add `variable "unused" {}` to `infra/modules/service-account/variables.tf`, rerun, and read the two warnings (`variable "unused" is declared but not used` and one about the missing type); remove the line.
 
 ## 7. Mistakes people make
 
