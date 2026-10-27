@@ -40,11 +40,11 @@ For the deploy steps you also need the Owner role on the sandbox project (you cr
 ```bash
 make install        # .venv from the hash-pinned lock file
 make up             # emulators + API + worker as containers, topics, push subscription and bucket created
-make run            # uploads report-1 and report-2 through the API; lists results/report-1.txt and results/report-2.txt
+make run            # uploads two files through the API, lets the emulator push them to the worker, lists the result files
 make down           # stop everything, delete the emulators' data
 ```
 
-`make run` ends with `results in gs://local-results: results/report-1.txt results/report-2.txt`.
+`make run` ends with `results in gs://local-results:` followed by the two files of this run (`results/demo-TIME-1.txt results/demo-TIME-2.txt`); it fails if either file is missing.
 
 ## Test
 
