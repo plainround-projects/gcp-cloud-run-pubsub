@@ -10,6 +10,24 @@ An upload API and a Pub/Sub push worker on Cloud Run, each running as its own le
 | **Architecture** | [ARCHITECTURE.md](ARCHITECTURE.md), decisions in [docs/adr](docs/adr) |
 | **Author** | Sumit Srivastava |
 
+## Architecture
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/architecture-dark.svg">
+  <img alt="A client posts to the API, a Cloud Run service running as api-sa that reads its database password from Secret Manager and publishes to the uploads topic. The topic pushes to the private Worker with an OIDC token for pubsub-invoker, and the worker creates a result in the bucket; messages that keep failing go to uploads-dead." src="docs/diagrams/architecture.svg">
+</picture>
+
+Notice that every arrow crosses an identity boundary: each service has its own account, and only pubsub-invoker may call the worker.
+
+## How one run flows
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/diagrams/flow-dark.svg">
+  <img alt="A name goes through the API, the topic and the worker into the bucket, and the worker's 204 acknowledges the message. In the amber rows a denied storage write makes the worker answer 500, Pub/Sub retries, and after five attempts the message goes to uploads-dead." src="docs/diagrams/flow.svg">
+</picture>
+
+The run ends with 204 acknowledging the message; the amber rows are the denied write, the retries and the dead letter.
+
 ## What is here
 
 - `src/uploads/`: the API (`POST /upload`, `GET /health`) and the worker (`POST /`, the Pub/Sub push endpoint), in Python 3.12+ with Flask and gunicorn, in four layers behind two ports.
